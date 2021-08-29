@@ -1,0 +1,29 @@
+{
+  "name": "ts-neural-net",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon src/index.ts",
+    "test": "jest"
+  },
+  "jest": {
+    "verbose": true,
+    "preset": "ts-jest",
+    "testEnvironment": "node"
+  },
+  "keywords": [],
+  "author": "alexej3ajtsev@gmail.com",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^27.0.1",
+    "jest": "^27.1.0",
+    "nodemon": "^2.0.12",
+    "ts-jest": "^27.0.5",
+    "typescript": "^4.4.2"
+  },
+  "dependencies": {
+    "ts-node": "^10.2.1"
+  }
+}
