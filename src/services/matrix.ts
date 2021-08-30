@@ -1,29 +1,22 @@
 export type ActivationFn = (num: number) => number;
 
-export interface Matrix {
-  name?: string;
-  data: number[][];
-  setItem(rowCol: [number, number], val: number): void;
-  multiply(matrix: Matrix): Matrix;
-  activate(fn: ActivationFn): Matrix;
-  print(): void;
-}
-
 export type MatrixOptions = {
   rows: number;
   columns: number;
   randFill?: boolean;
   name?: string;
 }
-
 export class Matrix {
+    public name?: string;
+    public data: number[][] = [];
     public rows: number = 0;
     public columns: number = 0;
+
     constructor(options: MatrixOptions) {
       this.rows = options.rows;
       this.columns = options.columns;
       this.data = [];
-      this.name = `[${options.name ? options.name + ' ' : ''}${options.rows} x ${options.columns} ] `;
+      this.setName(options.name as string);
       let i = options.rows;
       while (i > 0) {
         const initialValue = !options.randFill ? 0.0 : (Math.random() - 0.5).toFixed(3);
@@ -31,23 +24,128 @@ export class Matrix {
         i--;
       }
     }
+
+    setWeights(data: number[][]) {
+      this.data = data;
+      return this;
+    }
+
+    setName(name: string) {
+        this.name = `[${name ? name + ' ' : ''}${this.rows} x ${this.columns} ] `;
+        return this;
+    }
     setItem(rowCol: [number, number?], val: number) {
       const [row, col = 0] = rowCol;
       if (row + 1 > this.rows) {
-        console.error(`You try set value in row #${row + 1}, but only ${this.rows} exists`)
-        return this;
+        throw new Error(`You try set value in row #${row + 1}, but only ${this.rows} exists`);
       }
       if (col + 1 > this.columns) {
-        console.error(`You try set value in column #${col + 1}, but only ${this.columns} exists`)
-        return this;
+        throw new Error(`You try set value in column #${col + 1}, but only ${this.columns} exists`);
       }
       this.data[row][col] = val;
       return this;
     };
 
-    multiply(matrix: Matrix) {
+    multiply(input: Matrix | number) {
+      const inputIsMatrix = input instanceof Matrix;
+      if (inputIsMatrix && this.rows !== (input as Matrix).rows) {
+        throw new Error('You can\'t multiply matricies with different rows quantity');
+      }
+      const result = new Matrix({
+        rows: this.rows,
+        columns: this.columns,
+      })
+
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          if (inputIsMatrix)
+            result.setItem([i, j], this.data[i][j] * (input as Matrix).data[i][j]);
+          else
+            result.setItem([i, j], this.data[i][j] * (input as number));
+        }
+      }
+
+      return result;
+    }
+
+    add(input: Matrix | number) {
+      const inputIsMatrix = input instanceof Matrix;
+      if (inputIsMatrix && this.rows !== (input as Matrix).rows) {
+        throw new Error('You can\'t add matricies with different rows quantity');
+      }
+      const result = new Matrix({
+        rows: this.rows,
+        columns: this.columns,
+      })
+
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          if (inputIsMatrix)
+            result.setItem([i, j], this.data[i][j] + (input as Matrix).data[i][j]);
+          else
+            result.setItem([i, j], this.data[i][j] + (input as number));
+        }
+      }
+      return result;
+    }
+
+    subtractFrom(from: Matrix | number) {
+      const fromIsMatrix = from instanceof Matrix;
+      if (fromIsMatrix && this.rows !== (from as Matrix).rows) {
+        throw new Error('You can\'t subtract matrix from matrix with different rows');
+      }
+
+      const result = new Matrix({
+        rows: this.rows,
+        columns: this.columns,
+      })
+
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          if (fromIsMatrix) {
+            result.setItem([i, j], (from as Matrix).data[i][j] - this.data[i][j]);
+          } else {
+            result.setItem([i, j], (from as number) - this.data[i][j]);
+          }
+        }
+      }
+      return result;
+    }
+
+    normalizeValues() {
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          this.setItem([i, j], Number(this.data[i][j].toFixed(3)));
+        }
+      }
+      return this;
+    }
+
+    subtract(input: Matrix | number) {
+      const inputIsMatrix = input instanceof Matrix;
+      if (inputIsMatrix && this.rows !== (input as Matrix).rows) {
+        throw new Error('You can\'t add matricies with different rows quantity');
+      }
+      const result = new Matrix({
+        rows: this.rows,
+        columns: this.columns,
+      })
+
+      for (let i = 0; i < this.rows; i++) {
+        for (let j = 0; j < this.columns; j++) {
+          if (inputIsMatrix)
+            result.setItem([i, j], this.data[i][j] - (input as Matrix).data[i][j]);
+          else
+            result.setItem([i, j], this.data[i][j] - (input as number));
+        }
+      }
+
+      return result;
+    }
+
+    dotProduct(matrix: Matrix) {
       if (this.columns !== matrix.rows) {
-        throw new Error('You can\'t multiply this matricies, cause first.columns !== second.rows')
+        throw new Error('You can\'t dot product this matricies, cause first.columns !== second.rows');
       }
       const result = new Matrix({
         rows: this.rows,
@@ -57,7 +155,11 @@ export class Matrix {
       for (let i = 0; i < this.rows; i++) {
         const currentRow = this.data[i]
         for (let j = 0; j < matrix.columns; j++) {
-          const sum = currentRow.reduce((acc, rowItem, ix) => acc + rowItem * matrix.data[ix][j], 0)
+          const sum = currentRow
+            .reduce(
+              (acc, rowItem, ix) => acc + rowItem * matrix.data[ix][j],
+              0
+            )
           result.setItem([i, j], Number(sum.toFixed(3)))
         }
       }
@@ -77,6 +179,19 @@ export class Matrix {
       return result
     }
 
+    diff(matrix: Matrix) {
+      if (this.rows !== matrix.rows || this.columns !== matrix.columns) {
+        throw new Error('You can\'t get diff between matricies with different rows or columns quantities')
+      }
+      const result = new Matrix({ rows: this.rows, columns: this.columns })
+      for (let i = 0; i < this.rows; i++) {
+        for(let j = 0; j < this.columns; j++) {
+          result.setItem([i,j], this.data[i][j] - matrix.data[i][j])
+        }
+      }      
+      return result
+    }
+ 
     print() {
       console.log(JSON.stringify(this.data, (...args) => {
         const [, value] = args;
@@ -86,6 +201,17 @@ export class Matrix {
         return value;
       }, 0).replace(/\]/g, '\n<<').replace(/\[/g, `\n${this.name}>>\n\t`).replace(/\"\,\"/g, '\n\t').replace(/\"/g, ''))
       return this;
+    }
+    // input [ [1, 2, 3], [4, 5, 6], [7, 8, 9] ]
+    // output [ [1, 4, 7], [2, 5, 8], [3, 6, 9] ]
+    public static transpose(matrix: Matrix) {
+      const result = new Matrix({ rows: matrix.columns, columns: matrix.rows })
+      for (let i = 0; i < matrix.rows; i++) {
+        for(let j = 0; j < matrix.columns; j++) {
+          result.setItem([j, i], matrix.data[i][j])
+        }
+      }
+      return result;
     }
 }
 

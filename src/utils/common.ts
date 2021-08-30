@@ -1,3 +1,3 @@
-export function sigmoid(t: number) {
-    return 1/(1+Math.pow(Math.E, -t));
+export function sigmoid(num: number) {
+    return 1 / (1+Math.pow(Math.E, - num));
 }
