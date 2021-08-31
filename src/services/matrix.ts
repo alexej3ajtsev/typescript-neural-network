@@ -12,7 +12,10 @@ export class Matrix {
     public rows: number = 0;
     public columns: number = 0;
 
-    constructor(options: MatrixOptions) {
+    constructor(options?: MatrixOptions) {
+      if (typeof options === 'undefined') {
+        return;
+      }
       this.rows = options.rows;
       this.columns = options.columns;
       this.data = [];
@@ -27,6 +30,21 @@ export class Matrix {
 
     setWeights(data: number[][]) {
       this.data = data;
+      return this;
+    }
+
+    /**
+     * Можно удобно засетить веса в один столбец, 
+     * подходит для создания матриц входных значений и матриц целевых значений
+     * @param weights 
+     */
+    setOneColumnValues(values: number[]) {
+      this.columns = 1;
+      this.rows = values.length;
+      this.data = []
+      values.forEach((value, ix) => {
+        this.data[ix] = [value];
+      });
       return this;
     }
 

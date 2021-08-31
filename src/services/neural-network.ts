@@ -43,25 +43,32 @@ export class NeuralNetwork {
     ].forEach(m => m?.print());
   }
 
-  train(inputValues: Matrix, targetValues: Matrix, count = 1000) {
+  train(inputValues: Matrix[], targetValues: Matrix[], count = 1000) {
+    if (inputValues.length !== targetValues.length) {
+      throw new Error('Inputs and outputs sizes must be equal');
+    }
     while (count > 0) {
-      const hiddenInputs = this.inputHidden?.dotProduct(inputValues);
-      const hiddenOutputs = hiddenInputs?.activate(this.activationFn) as Matrix;
-      const finalInputs = this.hiddenOutput?.dotProduct(hiddenOutputs) as Matrix;
-      const finalOutputs = finalInputs.activate(this.activationFn);
-      finalOutputs.setName('output-values');
-      const outputErrors = targetValues.diff(finalOutputs)
-      const hiddenErrors = this.hiddenOutput?.dotProduct(outputErrors) as Matrix;
-      // TODO : переименовать более осмысленно
-      const hiddenOutputErrorsMatrix = outputErrors.multiply(finalOutputs).multiply(finalOutputs.subtractFrom(1));
-      const addHiddenOutputWeights = hiddenOutputErrorsMatrix.dotProduct(Matrix.transpose(hiddenOutputs)).multiply(this.learningRate);
-      this.hiddenOutput = this.hiddenOutput?.add(addHiddenOutputWeights) as Matrix;
-      this.hiddenOutput.setName('hidden -> output');
-      // TODO : переименовать более осмысленно
-      const inputHiddenErrorsMatrix = hiddenErrors.multiply(hiddenOutputs).multiply(hiddenOutputs.subtractFrom(1));
-      const addInputHiddenWeights = inputHiddenErrorsMatrix.dotProduct(Matrix.transpose(inputValues)).multiply(this.learningRate);
-      this.inputHidden = this.inputHidden?.add(addInputHiddenWeights) as Matrix;
-      this.inputHidden.setName('input -> hidden');
+      for (let i = 0; i < inputValues.length; i++) {
+        if (inputValues[i].columns !== 1 || targetValues[i].columns !== 1) {
+          return new Error('Inputs and outputs must have ')
+        }
+        const hiddenInputs = this.inputHidden?.dotProduct(inputValues[i]);
+        const hiddenOutputs = hiddenInputs?.activate(this.activationFn) as Matrix;
+        const finalInputs = this.hiddenOutput?.dotProduct(hiddenOutputs) as Matrix;
+        const finalOutputs = finalInputs.activate(this.activationFn);
+        const outputErrors = targetValues[i].diff(finalOutputs)
+        const hiddenErrors = this.hiddenOutput?.dotProduct(outputErrors) as Matrix;
+        // TODO : переименовать более осмысленно
+        const hiddenOutputErrorsMatrix = outputErrors.multiply(finalOutputs).multiply(finalOutputs.subtractFrom(1));
+        const addHiddenOutputWeights = hiddenOutputErrorsMatrix.dotProduct(Matrix.transpose(hiddenOutputs)).multiply(this.learningRate);
+        this.hiddenOutput = this.hiddenOutput?.add(addHiddenOutputWeights) as Matrix;
+        this.hiddenOutput.setName('hidden -> output');
+        // TODO : переименовать более осмысленно
+        const inputHiddenErrorsMatrix = hiddenErrors.multiply(hiddenOutputs).multiply(hiddenOutputs.subtractFrom(1));
+        const addInputHiddenWeights = inputHiddenErrorsMatrix.dotProduct(Matrix.transpose(inputValues[i])).multiply(this.learningRate);
+        this.inputHidden = this.inputHidden?.add(addInputHiddenWeights) as Matrix;
+        this.inputHidden.setName('input -> hidden');
+      }
       count--;
     }
   }
