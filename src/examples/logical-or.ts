@@ -1,97 +1,64 @@
+import { NeuralNetwork } from "../services/neural-network";
+import { Matrix } from "../services/matrix";
 
-import { NeuralNetwork } from '../services/neural-network';
-import { Matrix } from '../services/matrix';
+const NETWORK_LAYERS_QUANTITY = 4;
+const NETWORK_LAYER_NODES_QUANTITY = 3;
+const NETWORK_LEARNING_RATE = 0.05;
 
-const neuralNetwork = new NeuralNetwork(3,3,3,.01)
-neuralNetwork.setTestWeights(
-  [
-    [.345, .3, .4],
-    [.2, .266, .5],
-    [.32, .189, .2],
-  ],
-  [
-    [.3, .233, .222],
-    [.51, .401, .2],
-    [.24, .15, .3],
-  ],
-)
-
-const inputsAndTargets: [Matrix, Matrix][] = [
-  [
-    // input
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.01,
-      0.99
-    ]),
-    // target output
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.99,
-      0.01,
-    ]),
-  ],
-  [
-    new Matrix().setOneColumnValues([
-      0.99,
-      0.01,
-      0.99
-    ]),
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.99,
-      0.01
-    ]),
-  ],
-  [
-    new Matrix().setOneColumnValues([
-      0.99,
-      0.01,
-      0.01
-    ]),
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.99,
-      0.01
-    ]),
-  ],
-  [
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.01,
-      0.01
-    ]),
-    new Matrix().setOneColumnValues([
-      0.01,
-      0.01,
-      0.01
-    ]),
-  ]
-]
-
-for (let i = 0; i < inputsAndTargets.length; i++) {
-
-  const [input] = inputsAndTargets[i];
-  const beforeTrainOutput = neuralNetwork.query(input);
-  input.setName('before-train-input' + i).print();
-  beforeTrainOutput.setName('before-train-output' + i).print();
-  console.log('================================================');
-}
-const LEARNING_COUNT = 100000
-neuralNetwork.train(
-  inputsAndTargets.map(([input]) => input),
-  inputsAndTargets.map(([, target]) => target),
-  LEARNING_COUNT
+const neuralNetwork = new NeuralNetwork(
+	NETWORK_LAYERS_QUANTITY,
+	NETWORK_LAYER_NODES_QUANTITY,
+	NETWORK_LEARNING_RATE
 );
 
-console.log('================ AFTER TRAIN ===================');
-console.log('================================================');
+const inputsAndTargets: [Matrix, Matrix][] = [
+	[
+		// input
+		new Matrix().setOneColumnValues([0.01, 0.01, 0.99]),
+		// target output
+		new Matrix().setOneColumnValues([0.01, 0.99, 0.01]),
+	],
+	[
+		new Matrix().setOneColumnValues([0.99, 0.01, 0.99]),
+		new Matrix().setOneColumnValues([0.01, 0.99, 0.01]),
+	],
+	[
+		new Matrix().setOneColumnValues([0.99, 0.01, 0.01]),
+		new Matrix().setOneColumnValues([0.01, 0.99, 0.01]),
+	],
+	[
+		new Matrix().setOneColumnValues([0.01, 0.01, 0.01]),
+		new Matrix().setOneColumnValues([0.01, 0.01, 0.01]),
+	],
+];
 
 for (let i = 0; i < inputsAndTargets.length; i++) {
-  const [input] = inputsAndTargets[i];
-  const afterTrainOutput = neuralNetwork.query(input);
-  input.setName('after-train-input' + i).print();
-  afterTrainOutput.setName('after-train-output' + i).print();
-  console.log('================================================');
+	const [input] = inputsAndTargets[i];
+	const outputData = neuralNetwork.query(input);
+	input.setName("before-train-input" + i).print();
+	outputData[NETWORK_LAYERS_QUANTITY - 2].outputs
+		.setName("before-train-output" + i)
+		.print();
+	console.log("================================================");
+}
+const LEARNING_COUNT = 100000;
+neuralNetwork.train(
+	inputsAndTargets.map(([input]) => input),
+	inputsAndTargets.map(([, target]) => target),
+	LEARNING_COUNT
+);
+
+console.log("================ AFTER TRAIN ===================");
+console.log("================================================");
+
+for (let i = 0; i < inputsAndTargets.length; i++) {
+	const [input] = inputsAndTargets[i];
+	const outputData = neuralNetwork.query(input);
+	input.setName("after-train-input" + i).print();
+	outputData[NETWORK_LAYERS_QUANTITY - 2].outputs
+		.setName("after-train-output" + i)
+		.print();
+	console.log("================================================");
 }
 
+neuralNetwork.printMatrices();

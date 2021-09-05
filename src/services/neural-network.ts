@@ -1,84 +1,89 @@
-import { Matrix } from './matrix';
-import { sigmoid } from '../utils/common';
+import { Matrix } from "./matrix";
+import { sigmoid } from "../utils/common";
 
+type NeuralNetworkInputsOutputsData = { inputs: Matrix; outputs: Matrix }[];
 export class NeuralNetwork {
-  public inputHidden: null | Matrix = null;
-  public hiddenOutput: null | Matrix = null;
-  constructor(
-    private inputNodesQty: number,
-    private hiddenNodesQty: number,
-    private outputNodesQty: number,
-    private learningRate: number,
-    private activationFn = sigmoid,
-  ) {
-    // Если у нас три слоя то мы можем создать две матрицы:
-    // !!!именно в такой последовательности rows x columns!!!
-    // rows: hiddenNodesQty x columns: inputNodesQty 
-    // rows: outputNodesQty x columns: hiddenNodesQty
-    this.inputHidden = new Matrix({
-      rows: hiddenNodesQty,
-      columns: inputNodesQty,
-      randFill: true,
-      name: 'input -> hidden'
-    });
-    this.hiddenOutput = new Matrix({
-      rows: outputNodesQty,
-      columns: hiddenNodesQty,
-      randFill: true,
-      name: 'hidden -> output'
-    });
-  }
+	public layers: Matrix[] = [];
+	public inputHidden: null | Matrix = null;
+	public hiddenOutput: null | Matrix = null;
+	constructor(
+		private layerQuantity: number,
+		private layerNodesQuantity: number,
+		private learningRate: number,
+		private activationFn = sigmoid
+	) {
+		if (layerQuantity < 3) {
+			throw new Error("Minimum layers quantity is 3");
+		}
+		this.layers = new Array(layerQuantity - 1).fill(null).map((_, ix) => {
+			return new Matrix({
+				rows: layerNodesQuantity,
+				columns: layerNodesQuantity,
+				randFill: true,
+				name: `layer [${ix} - ${ix + 1}]`,
+			});
+		});
+	}
 
-  setTestWeights(inputsHiddensData: number[][], hiddensOutputsData: number[][]) {
-    if (this.inputHidden?.data)
-      this.inputHidden.data = inputsHiddensData;
-    if (this.hiddenOutput?.data)
-      this.hiddenOutput.data = hiddensOutputsData;
-  }
+	printMatrices() {
+		this.layers.forEach((m) => m.print());
+	}
 
-  printMatrices() {
-    [
-      this.inputHidden,
-      this.hiddenOutput
-    ].forEach(m => m?.print());
-  }
+	train(inputValues: Matrix[], targetValues: Matrix[], count = 1000) {
+		if (inputValues.length !== targetValues.length) {
+			throw new Error("Inputs and outputs sizes must be equal");
+		}
+		while (count > 0) {
+			for (let i = 0; i < inputValues.length; i++) {
+				if (inputValues[i].columns !== 1 || targetValues[i].columns !== 1) {
+					return new Error("Inputs and outputs must have ");
+				}
+				this.trainValue(inputValues[i], targetValues[i]);
+			}
+			count--;
+		}
+	}
 
-  train(inputValues: Matrix[], targetValues: Matrix[], count = 1000) {
-    if (inputValues.length !== targetValues.length) {
-      throw new Error('Inputs and outputs sizes must be equal');
-    }
-    while (count > 0) {
-      for (let i = 0; i < inputValues.length; i++) {
-        if (inputValues[i].columns !== 1 || targetValues[i].columns !== 1) {
-          return new Error('Inputs and outputs must have ')
-        }
-        const hiddenInputs = this.inputHidden?.dotProduct(inputValues[i]);
-        const hiddenOutputs = hiddenInputs?.activate(this.activationFn) as Matrix;
-        const finalInputs = this.hiddenOutput?.dotProduct(hiddenOutputs) as Matrix;
-        const finalOutputs = finalInputs.activate(this.activationFn);
-        const outputErrors = targetValues[i].diff(finalOutputs)
-        const hiddenErrors = this.hiddenOutput?.dotProduct(outputErrors) as Matrix;
-        // TODO : переименовать более осмысленно
-        const hiddenOutputErrorsMatrix = outputErrors.multiply(finalOutputs).multiply(finalOutputs.subtractFrom(1));
-        const addHiddenOutputWeights = hiddenOutputErrorsMatrix.dotProduct(Matrix.transpose(hiddenOutputs)).multiply(this.learningRate);
-        this.hiddenOutput = this.hiddenOutput?.add(addHiddenOutputWeights) as Matrix;
-        this.hiddenOutput.setName('hidden -> output');
-        // TODO : переименовать более осмысленно
-        const inputHiddenErrorsMatrix = hiddenErrors.multiply(hiddenOutputs).multiply(hiddenOutputs.subtractFrom(1));
-        const addInputHiddenWeights = inputHiddenErrorsMatrix.dotProduct(Matrix.transpose(inputValues[i])).multiply(this.learningRate);
-        this.inputHidden = this.inputHidden?.add(addInputHiddenWeights) as Matrix;
-        this.inputHidden.setName('input -> hidden');
-      }
-      count--;
-    }
-  }
+	private trainValue(inputValues: Matrix, targetValues: Matrix) {
+		const layersInputsOutputs = this.query(inputValues).map((io) => ({
+			...io,
+			errors: {} as Matrix,
+		}));
 
-  query(inputValues: Matrix) {
-    const hiddenInputs = this.inputHidden?.dotProduct(inputValues);
-    const hiddenOutputs = hiddenInputs?.activate(this.activationFn) as Matrix;
-    const finalInputs = this.hiddenOutput?.dotProduct(hiddenOutputs) as Matrix;
-    const finalOutputs = finalInputs.activate(this.activationFn);
-    finalOutputs.setName('output-values');
-    return finalOutputs;
-  }
+		for (let i = layersInputsOutputs.length - 1; i >= 0; i--) {
+			const layer = layersInputsOutputs[i];
+			const nextLayer = layersInputsOutputs[i + 1];
+			const isOutputLayer = i === layersInputsOutputs.length - 1;
+			layer.errors = isOutputLayer
+				? targetValues.diff(layer.outputs)
+				: this.layers[i + 1].dotProduct(nextLayer.errors);
+		}
+		for (let i = layersInputsOutputs.length - 1; i >= 0; i--) {
+			const layer = layersInputsOutputs[i];
+			const prevLayerOutputs =
+				layersInputsOutputs[i - 1]?.outputs || inputValues;
+			const modifiedLayerWeights = layer.errors
+				.multiply(layer.outputs)
+				.multiply(layer.outputs.subtractFrom(1))
+				.dotProduct(Matrix.transpose(prevLayerOutputs))
+				.multiply(this.learningRate);
+			this.layers[i] = this.layers[i].add(modifiedLayerWeights) as Matrix;
+		}
+	}
+
+	query(
+		inputValues: Matrix,
+		result = [] as NeuralNetworkInputsOutputsData
+	): NeuralNetworkInputsOutputsData {
+		const currentLayer = result.length;
+		const nextLayer = result.length + 1;
+		const currentLayerInputs =
+			this.layers[currentLayer]?.dotProduct(inputValues);
+		const currentLayerOutputs = currentLayerInputs.activate(this.activationFn);
+		result.push({ inputs: currentLayerInputs, outputs: currentLayerOutputs });
+		if (nextLayer === this.layers.length) {
+			return result;
+		}
+		return this.query(currentLayerOutputs, result);
+	}
 }
